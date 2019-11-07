@@ -1,0 +1,20 @@
+---
+title: "TweetCollection"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+POC
+```{r}
+library(rtweet)
+trump <- get_timeline("realDonaldTrump", n = 180)
+```
+the tweet collection gives us 90 different variables. Surely we dont need all of that so we are gonna cherry pick the most interesting ones
+```{r}
+toKeep <- c("screen_name", "text", "is_retweet")
+trump <- trump[names(trump) %in% toKeep]
+```
+
