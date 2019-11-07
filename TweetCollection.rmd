@@ -7,14 +7,60 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+
+```{r, include=FALSE}
+library(tidyverse)
+library(rtweet)
+library(purrr)
+```
+
 POC
 ```{r}
-library(rtweet)
 trump <- get_timeline("realDonaldTrump", n = 180)
 ```
 the tweet collection gives us 90 different variables. Surely we dont need all of that so we are gonna cherry pick the most interesting ones
 ```{r}
 toKeep <- c("screen_name", "text", "is_retweet")
 trump <- trump[names(trump) %in% toKeep]
+```
+Next  I will choose the tweeters for this project. I'm aiming to choose people who are currently in parlament and equally people from each party.
+
+* Outi Alanko-Kahiluoto @outialanko (Green party)
+* Pekka Haavisto @Haavisto (Green Party)
+* Paavo Arhinmäki @paavoarhinmaki (Left Alliance)
+* Mai Kivelä @MaiKivela (Left Alliance)
+* Jussi Halla-Aho @Halla_aho (Finns Party)
+* Sebastian Tynkkynen @SebastianTyne (Finns Party)
+* Terhi Koulumies @terhikoulumies (National Coalition Party)
+* Jaana Pelkonen @JaanaPelkonen (National Coalition Party)
+
+```{r}
+Tweeters <- c("outialanko", "Haavisto", "paavoarhinmaki", "MaiKivela", "Halla_aho", "Sebastiantyne", "terhikoulumies", "JaanaPelkonen")
+TweetersDF <- tibble(name = Tweeters)
+```
+
+```{r}
+tweetsAll <- TweetersDF %>% mutate(data = map(name, ~get_timeline(.x, n = 1000)))
+list2env(tweetsAll, .GlobalEnv) # Separating the lists
+AllTweetsDF <- bind_rows(data)  # Unlisting and binding the nested dataframes
+```
+Cleaning the data
+```{r}
+toKeep <- c("screen_name", "text", "is_retweet")
+AllTweetsDF <- AllTweetsDF[,names(AllTweetsDF) %in% toKeep] # Choose only desired variables
+
+AllTweetsDF <- AllTweetsDF[(AllTweetsDF$is_retweet == "FALSE"),]
+
+table(AllTweetsDF$screen_name)
+
+g1 <- ggplot(AllTweetsDF, aes(AllTweetsDF$screen_name, fill = AllTweetsDF$screen_name))+
+  geom_bar(stat = "count")+
+  theme(axis.text.x = element_text(angle = 45, vjust = 0.75))+
+  theme(legend.position = "none")
+g1
+```
+Feature engineering
+```{r}
+# TO DO: add columns: Name, Party
 ```
 
