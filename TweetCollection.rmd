@@ -12,6 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(rtweet)
 library(purrr)
+library(plyr)
 ```
 
 POC
@@ -62,5 +63,13 @@ g1
 Feature engineering
 ```{r}
 # TO DO: add columns: Name, Party
+table(AllTweetsDF$screen_name)
+AllTweetsDF$name <- AllTweetsDF$screen_name
+
+AllTweetsDF$name <- revalue(AllTweetsDF$name, c("Haavisto" = "PekkaHaavisto", "Halla_aho" = "JussiHalla-Aho", "JaanaPelkonen" = "JaanaPelkonen", "MaiKivela" = "MaiKivela", "outialanko" = "OutiAlanko", "paavoarhinmaki" = "PaavoArhinmaki", "SebastianTyne" = "SebastianTynkkynen", "terhikoulumies" = "TerhiKoulumies"))
+
+AllTweetsDF$party <- NA
+
+if
 ```
 
