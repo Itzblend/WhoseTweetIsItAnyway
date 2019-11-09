@@ -13,6 +13,13 @@ library(tidyverse)
 library(rtweet)
 library(purrr)
 library(plyr)
+library(text2vec)
+library(caret)
+library(randomForest)
+library(caTools)
+library(diveRsity)
+library(tm)
+library(tokenizers)
 ```
 
 POC
@@ -38,6 +45,11 @@ Next  I will choose the tweeters for this project. I'm aiming to choose people w
 ```{r}
 Tweeters <- c("outialanko", "Haavisto", "paavoarhinmaki", "MaiKivela", "Halla_aho", "Sebastiantyne", "terhikoulumies", "JaanaPelkonen")
 TweetersDF <- tibble(name = Tweeters)
+
+GreenParty <- c("OutiAlanko", "PekkaHaavisto")
+LeftAlliance <- c("PaavoArhinmaki", "MaiKivela")
+FinnsParty <- c("JussiHalla-Aho", "SebastianTynkkynen")
+NCP <- c("TerhiKoulumies", "JaanaPelkonen")
 ```
 
 ```{r}
@@ -51,6 +63,9 @@ toKeep <- c("screen_name", "text", "is_retweet")
 AllTweetsDF <- AllTweetsDF[,names(AllTweetsDF) %in% toKeep] # Choose only desired variables
 
 AllTweetsDF <- AllTweetsDF[(AllTweetsDF$is_retweet == "FALSE"),]
+
+drops <- c("is_retweet")
+AllTweetsDF <- AllTweetsDF[,!(names(AllTweetsDF) %in% drops)]
 
 table(AllTweetsDF$screen_name)
 
@@ -70,6 +85,72 @@ AllTweetsDF$name <- revalue(AllTweetsDF$name, c("Haavisto" = "PekkaHaavisto", "H
 
 AllTweetsDF$party <- NA
 
-if
+for(i in 1:nrow(AllTweetsDF)){
+  if(AllTweetsDF$name[i] %in% GreenParty) {
+    AllTweetsDF$party[i] <- "GreenParty"
+  }
+}
+
+for(i in 1:nrow(AllTweetsDF)){
+  if(AllTweetsDF$name[i] %in% LeftAlliance) {
+    AllTweetsDF$party[i] <- "LeftAlliance"
+  }
+}
+
+for(i in 1:nrow(AllTweetsDF)){
+  if(AllTweetsDF$name[i] %in% FinnsParty) {
+    AllTweetsDF$party[i] <- "FinnsParty"
+  }
+}
+
+for(i in 1:nrow(AllTweetsDF)){
+  if(AllTweetsDF$name[i] %in% NCP) {
+    AllTweetsDF$party[i] <- "NCP"
+  }
+}
+
+
+```
+Splitting the dataset and removing target variables
+```{r}
+splitindex <- createDataPartition(AllTweetsDF$name, p = 0.75, list = FALSE)
+train <- AllTweetsDF[splitindex,]
+test <- AllTweetsDF[-splitindex,]
+```
+Checking the cross validation between datasets on target values
+```{r}
+splitgg1 <- ggplot(train, aes(train$name, fill = train$name))+
+  geom_bar(stat = "count")
+splitgg2 <- ggplot(test, aes(test$name, fill = test$name))+
+  geom_bar(stat = "count")
+multiplot(splitgg1,splitgg2, cols = 1)
+```
+Train and test datasets are equally split.
+
+On first algorithm we will predict from which political party the tweet has come. Later we will move onto predicting who tweeted that. As we want to only use the text as a predictor, we will remove party and name columns from test set (leaving only the text and empty party column) and name columns from train
+```{r}
+test$screen_name <- NULL
+test$name <- NULL
+test$party <- NA
+train$screen_name <- NULL
+train$name <- NULL
+
+all <- rbind(train, test) #building combined all dataset for future use
+```
+### Preprocessing
+
+Creating the DTM (Document Term Matrix) or also known as TFM (Term Frequency Matrix)
+```{r}
+prepFun <- tolower
+tokFun <- tokenize_tweets # Using tokenizer specializied for tweets from Tokenizers package
+
+tokenTrain <- train$text %>% # Pre processes for the tokenizing
+  prepFun %>% 
+  tokFun
+
+itTrain <- itoken(tokenTrain) # Creating the tokens
+vocab <- create_vocabulary(itTrain) #B Building a vocabulary from tokenized data
+
+
 ```
 
