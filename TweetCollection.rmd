@@ -20,6 +20,7 @@ library(caTools)
 library(diveRsity)
 library(tm)
 library(tokenizers)
+library(glmnet)
 ```
 
 POC
@@ -151,6 +152,18 @@ tokenTrain <- train$text %>% # Pre processes for the tokenizing
 itTrain <- itoken(tokenTrain) # Creating the tokens
 vocab <- create_vocabulary(itTrain) #B Building a vocabulary from tokenized data
 
+vectorizer = vocab_vectorizer(vocab)
 
+dtmTrain = create_dtm(itTrain, vectorizer)
+```
+Fitting the first model
+```{r}
+fit <- glmnet(x = dtmTrain, y = train$party,
+              family = "multinomial",
+              type.multinomial = "grouped")
+
+
+glmProbs <- predict(fit, newx = test$party, type = "class")
+plot(fit)
 ```
 
