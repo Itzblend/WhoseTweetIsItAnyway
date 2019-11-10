@@ -66,7 +66,7 @@ AllTweetsDF <- AllTweetsDF[,names(AllTweetsDF) %in% toKeep] # Choose only desire
 AllTweetsDF <- AllTweetsDF[(AllTweetsDF$is_retweet == "FALSE"),]
 
 drops <- c("is_retweet")
-AllTweetsDF <- AllTweetsDF[,!(names(AllTweetsDF) %in% drops)]
+AllTweetsDF <- AllTweetsDF[,!(names(AllTweetsDF) %in% drops)] # Removing retweets
 
 table(AllTweetsDF$screen_name)
 
@@ -150,20 +150,63 @@ tokenTrain <- train$text %>% # Pre processes for the tokenizing
   tokFun
 
 itTrain <- itoken(tokenTrain) # Creating the tokens
+
+# Tokenize the test data
+tokenTest <- test$text %>% 
+  prepFun %>% 
+  tokFun
+
+itTest <- itoken(tokenTest)
+
 vocab <- create_vocabulary(itTrain) #B Building a vocabulary from tokenized data
 
 vectorizer = vocab_vectorizer(vocab)
 
 dtmTrain = create_dtm(itTrain, vectorizer)
 ```
+
+#### LEAVING THE MODEL FOR NOW, IT'S NOT WORKING. MOVING INTO TF-IDF AND RETURNING HERE LATER ####
+
 Fitting the first model
 ```{r}
+set.seed(205)
 fit <- glmnet(x = dtmTrain, y = train$party,
               family = "multinomial",
               type.multinomial = "grouped")
 
+plot(fit, xvar = "lambda", label = TRUE, type.coef = "2norm")
 
-glmProbs <- predict(fit, newx = test$party, type = "class")
-plot(fit)
+cvfit = cv.glmnet(x = dtmTrain, y = train$party, family = "multinomial", type.multinomial = "grouped", parallel = TRUE)
+plot(cvfit)
+
+sparse
+
+glmPred <- predict(cvfit, newx = test$party,  s = "lambda.min", type = "class")
 ```
+
+TF-IDF
+```{r}
+tfidf <- TfIdf$new()
+dtm_train_tfidf <- fit_transform(dtmTrain, tfidf)
+dtm_test_tfidf = create_dtm(itTest, vectorizer) %>%
+  transform(tfidf)
+```
+Model with new data
+```{r}
+glmnet_classifier <- cv.glmnet(x = dtm_train_tfidf, y = train$party,
+                               family = "multinomial",
+                               alpha = 0,
+                               type.measure = "mae",
+                               nfolds = 4,
+                               thresh = 1e-3,
+                               maxit = 1e3)
+
+plot(glmnet_classifier)
+
+preds <- predict(glmnet_classifier, dtm_test_tfidf, type = "response")
+
+tempoo <- as.data.frame(preds)
+head(tempoo)
+```
+
 
