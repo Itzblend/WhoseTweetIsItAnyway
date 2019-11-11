@@ -130,6 +130,7 @@ Train and test datasets are equally split.
 
 On first algorithm we will predict from which political party the tweet has come. Later we will move onto predicting who tweeted that. As we want to only use the text as a predictor, we will remove party and name columns from test set (leaving only the text and empty party column) and name columns from train
 ```{r}
+origtestparty <- test$party # Storing the original party values to check accuracy later on
 test$screen_name <- NULL
 test$name <- NULL
 test$party <- NA
@@ -169,19 +170,19 @@ dtmTrain = create_dtm(itTrain, vectorizer)
 
 Fitting the first model
 ```{r}
-set.seed(205)
-fit <- glmnet(x = dtmTrain, y = train$party,
-              family = "multinomial",
-              type.multinomial = "grouped")
+#set.seed(205)
+#fit <- glmnet(x = dtmTrain, y = train$party,
+#              family = "multinomial",
+#              type.multinomial = "grouped")
+#
+#plot(fit, xvar = "lambda", label = TRUE, type.coef = "2norm")
+#
+#cvfit = cv.glmnet(x = dtmTrain, y = train$party, family = "multinomial", type.multinomial = "grouped", parallel = TRUE)
+#plot(cvfit)
 
-plot(fit, xvar = "lambda", label = TRUE, type.coef = "2norm")
 
-cvfit = cv.glmnet(x = dtmTrain, y = train$party, family = "multinomial", type.multinomial = "grouped", parallel = TRUE)
-plot(cvfit)
 
-sparse
-
-glmPred <- predict(cvfit, newx = test$party,  s = "lambda.min", type = "class")
+#glmPred <- predict(cvfit, newx = test$party,  s = "lambda.min", type = "class")
 ```
 
 TF-IDF
@@ -193,6 +194,7 @@ dtm_test_tfidf = create_dtm(itTest, vectorizer) %>%
 ```
 Model with new data
 ```{r}
+set.seed(205)
 glmnet_classifier <- cv.glmnet(x = dtm_train_tfidf, y = train$party,
                                family = "multinomial",
                                alpha = 0,
@@ -205,8 +207,21 @@ plot(glmnet_classifier)
 
 preds <- predict(glmnet_classifier, dtm_test_tfidf, type = "response")
 
-tempoo <- as.data.frame(preds)
-head(tempoo)
+partyPred <- as.data.frame(preds)
+head(partyPred)
+```
+Assigning the predictions into the test set
+```{r}
+max_names <- apply(partyPred, 1, which.max)
+test$predicted <- max_names
+parties <- c("FinnsParty", "GreenParty", "LeftAlliance", "NCP")
+test$predicted <- mapvalues(test$predicted, from = c(1,2,3,4), to = parties)
+```
+Calculating the accuract by comparing to real party value
+```{r}
+test$party <- origtestparty
+
+cat("The accuracy of the model predicting the party is", sum(test$party == test$predicted)/nrow(test))
 ```
 
 
