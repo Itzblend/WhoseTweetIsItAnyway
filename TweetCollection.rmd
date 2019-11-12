@@ -54,7 +54,7 @@ NCP <- c("TerhiKoulumies", "JaanaPelkonen")
 ```
 
 ```{r}
-tweetsAll <- TweetersDF %>% mutate(data = map(name, ~get_timeline(.x, n = 1000)))
+tweetsAll <- TweetersDF %>% mutate(data = map(name, ~get_timeline(.x, n = 2000)))
 list2env(tweetsAll, .GlobalEnv) # Separating the lists
 AllTweetsDF <- bind_rows(data)  # Unlisting and binding the nested dataframes
 ```
@@ -159,30 +159,11 @@ tokenTest <- test$text %>%
 
 itTest <- itoken(tokenTest)
 
-vocab <- create_vocabulary(itTrain) #B Building a vocabulary from tokenized data
+vocab <- create_vocabulary(itTrain) # Building a vocabulary from tokenized data
 
 vectorizer = vocab_vectorizer(vocab)
 
 dtmTrain = create_dtm(itTrain, vectorizer)
-```
-
-#### LEAVING THE MODEL FOR NOW, IT'S NOT WORKING. MOVING INTO TF-IDF AND RETURNING HERE LATER ####
-
-Fitting the first model
-```{r}
-#set.seed(205)
-#fit <- glmnet(x = dtmTrain, y = train$party,
-#              family = "multinomial",
-#              type.multinomial = "grouped")
-#
-#plot(fit, xvar = "lambda", label = TRUE, type.coef = "2norm")
-#
-#cvfit = cv.glmnet(x = dtmTrain, y = train$party, family = "multinomial", type.multinomial = "grouped", parallel = TRUE)
-#plot(cvfit)
-
-
-
-#glmPred <- predict(cvfit, newx = test$party,  s = "lambda.min", type = "class")
 ```
 
 TF-IDF
@@ -194,6 +175,9 @@ dtm_test_tfidf = create_dtm(itTest, vectorizer) %>%
 ```
 Model with new data
 ```{r}
+dtm_train_tfidf <- normalize(dtm_train_tfidf, "l2")
+dtm_test_tfidf <- normalize(dtm_test_tfidf, "l2")
+
 set.seed(205)
 glmnet_classifier <- cv.glmnet(x = dtm_train_tfidf, y = train$party,
                                family = "multinomial",
@@ -217,11 +201,44 @@ test$predicted <- max_names
 parties <- c("FinnsParty", "GreenParty", "LeftAlliance", "NCP")
 test$predicted <- mapvalues(test$predicted, from = c(1,2,3,4), to = parties)
 ```
-Calculating the accuract by comparing to real party value
+Calculating the accuracy by comparing to real party value
 ```{r}
 test$party <- origtestparty
 
-cat("The accuracy of the model predicting the party is", sum(test$party == test$predicted)/nrow(test))
+ cat("The accuracy of the model predicting the party is", sum(test$party == test$predicted)/nrow(test))
+```
+Making new model using N-grams in hope of gaining accuracy (Commenting this out as N-Gram model only reached 66% accuracy)
+```{r}
+# vocab = vocab %>% prune_vocabulary(term_count_min = 10,
+#                                    doc_proportion_max = 0.5)
+# 
+# bigram_vectorizer = vocab_vectorizer(vocab)
+# 
+# dtmTrain = create_dtm(itTrain, bigram_vectorizer)
+# 
+# set.seed(205)
+# glmnet_classifier <- cv.glmnet(x = dtmTrain, y = train$party,
+#                                family = "multinomial",
+#                                alpha = 0,
+#                                type.measure = "mae",
+#                                nfolds = 4,
+#                                thresh = 1e-3,
+#                                maxit = 1e3)
+# 
+# # Applying the model to test set with the vectorizer
+# dtmTest <- create_dtm(itTest, bigram_vectorizer)
+# preds <- predict(glmnet_classifier, dtmTest, type = "response")
+# 
+# partyPred <- as.data.frame(preds)
+# 
+# max_names <- apply(partyPred, 1, which.max)
+# test$predicted <- max_names
+# parties <- c("FinnsParty", "GreenParty", "LeftAlliance", "NCP")
+# test$predicted <- mapvalues(test$predicted, from = c(1,2,3,4), to = parties)
+# 
+# test$party <- origtestparty
+# 
+# cat("The accuracy of the model predicting the party is", sum(test$party == test$predicted)/nrow(test))
 ```
 
 
